@@ -105,6 +105,23 @@ public partial class MainWindow : Window
         MinPixelsV.Text = ((int)MinPixels.Value).ToString();
         RecoilVals.Text = $"v={(int)RecoilStrength.Value} px/s   h={(int)RecoilHorizontal.Value} px/s";
         RapidVals.Text = $"{(int)RapidRpm.Value} RPM";
+        UpdateModeLabel();
+    }
+
+    void UpdateModeLabel()
+    {
+        bool recoil = RecoilOn.IsChecked == true;
+        bool rapid = RapidOn.IsChecked == true;
+        string mode = (recoil, rapid) switch
+        {
+            (true, true) => "COMBINED — per-shot synced pulls + rapid fire",
+            (true, false) => "CONTINUOUS — smooth counter-pull",
+            (false, true) => "CLICKS ONLY — rapid fire",
+            (false, false) => "OFF"
+        };
+        ModeLabel.Text = "MODE: " + mode;
+        ModeLabel.Foreground = new Wm.SolidColorBrush(
+            (recoil || rapid) ? Wm.Color.FromRgb(0x00, 0xE6, 0x76) : Wm.Color.FromRgb(0x6B, 0x75, 0x85));
     }
 
     // ── enable / state ────────────────────────────────────────────

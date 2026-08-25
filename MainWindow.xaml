@@ -106,7 +106,13 @@
                 </StackPanel>
             </Border>
 
-            <!-- RECOIL + RAPID -->
+            <!-- MACROS -->
+            <StackPanel Margin="0,0,0,6">
+                <Grid>
+                    <TextBlock Text="MACROS — NO-RECOIL + RAPID FIRE" FontSize="12" FontWeight="SemiBold" Foreground="#FF00E676" />
+                    <TextBlock x:Name="ModeLabel" HorizontalAlignment="Right" FontFamily="Consolas" FontSize="11" Foreground="#FFFB923C" Text="MODE: OFF" />
+                </Grid>
+            </StackPanel>
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" /><ColumnDefinition Width="10" /><ColumnDefinition Width="*" />

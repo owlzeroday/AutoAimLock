@@ -27,14 +27,14 @@ public sealed class Settings
     public Band ColorBand { get; set; } = new();
     public bool InvertFovCheck { get; set; } = false;
 
-    // No-recoil (continuous counter-pull while firing)
-    public bool RecoilOn { get; set; } = false;
-    public int RecoilStrength { get; set; } = 25;  // px per second downward
+    // No-recoil (continuous counter-pull while firing; per-shot when rapid fire is on)
+    public bool RecoilOn { get; set; } = true;
+    public int RecoilStrength { get; set; } = 25;  // px per second downward (per shot in combined mode)
     public int RecoilHorizontal { get; set; } = 0; // px per second bias
 
     // Rapid fire
-    public bool RapidOn { get; set; } = false;
-    public int RapidRpm { get; set; } = 500;
+    public bool RapidOn { get; set; } = true;
+    public int RapidRpm { get; set; } = 600;
 
     // Presets: name -> band
     public static Dictionary<string, Band> Presets { get; } = new()
