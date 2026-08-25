@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoAimLock.App", "..\src\AutoAimLock.App\AutoAimLock.App.csproj", "{57A481A8-7C9C-4B82-9E2C-B6FF9694208C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoAimLock.Core", "..\src\AutoAimLock.Core\AutoAimLock.Core.csproj", "{B86AAC8E-9E2E-484F-9E02-20970536B307}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoAimLock.Engine", "..\src\AutoAimLock.Engine\AutoAimLock.Engine.csproj", "{1B162E73-DC7D-4A01-96B9-632C55920E23}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{57A481A8-7C9C-4B82-9E2C-B6FF9694208C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{57A481A8-7C9C-4B82-9E2C-B6FF9694208C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{57A481A8-7C9C-4B82-9E2C-B6FF9694208C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{57A481A8-7C9C-4B82-9E2C-B6FF9694208C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B86AAC8E-9E2E-484F-9E02-20970536B307}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B86AAC8E-9E2E-484F-9E02-20970536B307}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B86AAC8E-9E2E-484F-9E02-20970536B307}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B86AAC8E-9E2E-484F-9E02-20970536B307}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1B162E73-DC7D-4A01-96B9-632C55920E23}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1B162E73-DC7D-4A01-96B9-632C55920E23}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1B162E73-DC7D-4A01-96B9-632C55920E23}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1B162E73-DC7D-4A01-96B9-632C55920E23}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

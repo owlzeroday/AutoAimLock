@@ -1,0 +1,28 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.pdb
+
+## NuGet
+*.nupkg
+.nuget/
+
+## IDE
+.idea/
+*.swp
+*~
+
+## Build artifacts
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa]r[Tt]ifacts/
+publish/
+
+## OS
+Thumbs.db
+.DS_Store
