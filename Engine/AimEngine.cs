@@ -78,10 +78,25 @@ public sealed class AimEngine : IDisposable
             {
                 now = sw.ElapsedMilliseconds;
 
-                // Fire button with release-debounce (synthetic LEFTUP reads as up
-                // briefly even while the user still holds the button).
+                // Fire button with release-debounce. CRITICAL: our own synthetic
+                // click-down ALSO sets GetAsyncKeyState — if it reset the release
+                // counter, the click train would become self-sustaining after the
+                // user lets go (runaway auto-fire). So while a synthetic click is
+                // down, the reading is "unknown": the counter is frozen, and only
+                // a press detected OUTSIDE our synthetic window counts as held.
                 bool rawDown = Native.LeftDown;
-                releaseCount = rawDown ? 0 : releaseCount + 1;
+                if (_clickDown)
+                {
+                    // synthetic in flight — leave releaseCount untouched
+                }
+                else if (rawDown)
+                {
+                    releaseCount = 0;
+                }
+                else
+                {
+                    releaseCount++;
+                }
                 bool held = releaseCount < 8; // ~64ms of continuous up = released
                 Firing = held;
 
