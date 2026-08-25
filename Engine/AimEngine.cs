@@ -38,6 +38,9 @@ public sealed class AimEngine : IDisposable
     // Recoil accumulators (fractional)
     double _accX, _accY;
 
+    // Spray progression (Lua-style: pull ramps up the longer the spray continues)
+    long _sprayStartMs; // 0 = not firing
+
     public volatile bool Locked;
     public volatile bool Firing;
     public int Fps { get; private set; }
@@ -146,13 +149,25 @@ public sealed class AimEngine : IDisposable
                     _inDeadzone = false;
                 }
 
-                // ── No-recoil: continuous counter-pull while firing ──
-                if (_settings.RecoilOn && held)
+                // ── Spray progression (resets the moment firing stops) ──
+                if (!held) _sprayStartMs = 0;
+                else if (_sprayStartMs == 0) _sprayStartMs = now;
+                double spraySec = held ? (now - _sprayStartMs) / 1000.0 : 0;
+                double sprayMult = 1.0 + Math.Min(0.6, spraySec * 0.3); // ramps 1.0 → 1.6 over ~2s
+
+                // ── No-recoil mode selection ──
+                // Combined (RapidOn + RecoilOn): recoil is applied PER CLICK, synced
+                // with each synthetic shot (the canonical Lua hybrid:
+                // PressAndRelease(1) → MoveRelative(0,2) → Sleep). Continuous pull
+                // only runs for plain no-recoil (auto weapons, physical hold).
+                bool combined = _settings.RapidOn && _settings.RecoilOn;
+
+                if (_settings.RecoilOn && held && !_settings.RapidOn)
                 {
                     // Humanization: occasionally skip a tick (~4%)
                     if (_rng.NextDouble() >= 0.04)
                     {
-                        _accY += _settings.RecoilStrength * (TickMs / 1000.0);
+                        _accY += _settings.RecoilStrength * sprayMult * (TickMs / 1000.0);
                         double spread = Math.Max(0.3, Math.Abs(_settings.RecoilHorizontal) * 0.4);
                         _accX += _settings.RecoilHorizontal * (TickMs / 1000.0)
                                  + (_rng.NextDouble() * 2 - 1) * spread * (TickMs / 1000.0);
@@ -171,7 +186,7 @@ public sealed class AimEngine : IDisposable
                     _accX = _accY = 0;
                 }
 
-                // ── Rapid-fire click state machine ──
+                // ── Rapid-fire click state machine (volatile cadence) ──
                 if (_settings.RapidOn && held)
                 {
                     int interval = Math.Clamp(60000 / Math.Max(1, _settings.RapidRpm), 20, 5000);
@@ -179,13 +194,20 @@ public sealed class AimEngine : IDisposable
                     {
                         Native.LeftButton(true);
                         _clickDown = true;
-                        _clickUpAt = now + 10;
+                        _clickUpAt = now + 8 + (int)Vol(0, 6);   // hold volatility (8-14ms)
                     }
                     else if (_clickDown && now >= _clickUpAt)
                     {
                         Native.LeftButton(false);
                         _clickDown = false;
-                        _nextClickAt = now + Math.Max(1, interval - 10);
+                        if (combined)
+                        {
+                            // Per-shot recoil pull, synced to THIS shot (Lua hybrid),
+                            // with 70-140% volatility × spray progression.
+                            PerClickRecoil(sprayMult);
+                        }
+                        // Delay volatility: ±15% around the weapon interval.
+                        _nextClickAt = now + (long)Math.Max(1, (interval - 10) * Vol(0.85, 1.15));
                     }
                 }
                 else if (_clickDown)
@@ -219,6 +241,29 @@ public sealed class AimEngine : IDisposable
             Native.LeftButton(false);
             _clickDown = false;
         }
+    }
+
+    /// <summary>Random multiplier in [lo, hi) — the Lua "Volatility" pattern
+    /// (70-140% on pulls, 80-120% on delays) that makes macros non-robotic.</summary>
+    double Vol(double lo, double hi) => lo + _rng.NextDouble() * (hi - lo);
+
+    /// <summary>
+    /// One shot = one pull. Applied immediately after the synthetic click's LEFTUP,
+    /// magnitude = RecoilStrength × volatility(0.7-1.4) × spray progression,
+    /// split into two sub-moves so it eases down instead of a single jerk.
+    /// </summary>
+    void PerClickRecoil(double sprayMult)
+    {
+        double totalY = _settings.RecoilStrength * Vol(0.7, 1.4) * sprayMult;
+        double totalX = _settings.RecoilHorizontal * Vol(0.7, 1.4)
+                        + (_rng.NextDouble() * 2 - 1) * Math.Max(0.2, Math.Abs(_settings.RecoilHorizontal) * 0.3);
+        if (Math.Abs(totalY) < 0.5 && Math.Abs(totalX) < 0.5) return;
+
+        // Two sub-steps (60% / 40%) — smooth ramp, no visible jerk.
+        int y1 = (int)Math.Round(totalY * 0.6), y2 = (int)Math.Round(totalY * 0.4);
+        int x1 = (int)Math.Round(totalX * 0.6), x2 = (int)Math.Round(totalX * 0.4);
+        Native.Move(x1, y1);
+        Native.Move(x2, y2);
     }
 
     static void SleepTick() => Thread.Sleep(TickMs);
