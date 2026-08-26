@@ -46,17 +46,27 @@ public partial class MainWindow : Window
         MacroKeyCombo.Items.Add("Left Mouse");
         MacroKeyCombo.Items.Add("Side Button 5");
         MacroKeyCombo.Items.Add("Side Button 6");
-        // Match the combo to the profile's active binding trigger.
-        int sel = 0;
-        var trigger = App.CurrentProfile?.Bindings.FirstOrDefault()?.Trigger;
-        sel = trigger switch
+        // Macro controls reflect the PROFILE (single source of truth), so a fresh
+        // seed (Left → RapidFireRecoil) isn't clobbered by the legacy engine JSON.
+        var binding = App.CurrentProfile?.Bindings.FirstOrDefault();
+        if (binding is not null)
         {
-            null => 0,
-            MouseButton.Side1 => 1,
-            MouseButton.Side2 => 2,
-            _ => 0
-        };
-        MacroKeyCombo.SelectedIndex = sel;
+            int sel = binding.Trigger switch
+            {
+                MouseButton.Side1 => 1,
+                MouseButton.Side2 => 2,
+                _ => 0
+            };
+            MacroKeyCombo.SelectedIndex = sel;
+            RapidRpm.Value = binding.FireRateRpm;
+            RecoilStrength.Value = App.CurrentProfile!.RecoilStrength;
+            RecoilOn.IsChecked = binding.Mode is BindingMode.RecoilComp or BindingMode.RapidFireRecoil;
+            RapidOn.IsChecked = binding.Mode is BindingMode.RapidFire or BindingMode.RapidFireRecoil;
+        }
+        else
+        {
+            MacroKeyCombo.SelectedIndex = 0; // default Left
+        }
         MacroKeyCombo.SelectionChanged += (_, _) => { ApplyUiToSettings(); SyncMacroProfile(); };
         foreach (var name in Settings.Presets.Keys) PresetCombo.Items.Add(name);
         PresetCombo.SelectedItem = "Knives Out — Bot Body";
