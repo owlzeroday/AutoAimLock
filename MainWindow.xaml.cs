@@ -83,7 +83,7 @@ public partial class MainWindow : Window
         _s.Fov = (int)Fov.Value; _s.GainPct = (int)Gain.Value; _s.MaxStep = (int)MaxStep.Value;
         _s.Deadzone = (int)Deadzone.Value; _s.MinPixels = (int)MinPixels.Value;
         _s.RecoilOn = RecoilOn.IsChecked == true;
-        _s.RecoilStrength = (int)RecoilStrength.Value;
+        _s.RecoilStrength = Math.Round(RecoilStrength.Value, 1);
         _s.RecoilHorizontal = (int)RecoilHorizontal.Value;
         _s.RapidOn = RapidOn.IsChecked == true;
         _s.RapidRpm = (int)RapidRpm.Value;
@@ -103,8 +103,8 @@ public partial class MainWindow : Window
         MaxStepV.Text = ((int)MaxStep.Value).ToString() + " px";
         DeadzoneV.Text = ((int)Deadzone.Value).ToString() + " px (hold ×1.6)";
         MinPixelsV.Text = ((int)MinPixels.Value).ToString();
-        RecoilVals.Text = $"v={(int)RecoilStrength.Value} px/s   h={(int)RecoilHorizontal.Value} px/s";
-        RapidVals.Text = $"{(int)RapidRpm.Value} RPM";
+        RecoilVals.Text = $"×{_s.RecoilStrength:0.0} multiplier   h={(int)RecoilHorizontal.Value} px/shot";
+        RapidVals.Text = $"{(int)RapidRpm.Value} RPM (weapon fire rate)";
         UpdateModeLabel();
     }
 
@@ -115,7 +115,7 @@ public partial class MainWindow : Window
         string mode = (recoil, rapid) switch
         {
             (true, true) => "COMBINED — per-shot synced pulls + rapid fire",
-            (true, false) => "CONTINUOUS — smooth counter-pull",
+            (true, false) => "RECOIL — per-shot at fire rate",
             (false, true) => "CLICKS ONLY — rapid fire",
             (false, false) => "OFF"
         };

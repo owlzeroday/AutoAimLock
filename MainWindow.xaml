@@ -119,13 +119,13 @@
                 </Grid.ColumnDefinitions>
                 <Border Grid.Column="0" Background="#FF111722" BorderBrush="#FF1F2937" BorderThickness="1" CornerRadius="8" Padding="14">
                     <StackPanel>
-                        <CheckBox x:Name="RecoilOn" Content="No-recoil" FontWeight="SemiBold" />
-                        <TextBlock Text="Strength (px/s)" Margin="0,8,0,0" />
-                        <Slider  x:Name="RecoilStrength" Minimum="5" Maximum="80" />
-                        <TextBlock Text="Horizontal bias (px/s)" Margin="0,6,0,0" />
-                        <Slider  x:Name="RecoilHorizontal" Minimum="-30" Maximum="30" />
+                        <CheckBox x:Name="RecoilOn" Content="No-recoil (per-shot, AegisMouse model)" FontWeight="SemiBold" />
+                        <TextBlock Text="Strength multiplier (×)" Margin="0,8,0,0" />
+                        <Slider  x:Name="RecoilStrength" Minimum="0.1" Maximum="3" TickFrequency="0.1" IsSnapToTickEnabled="True" />
+                        <TextBlock Text="Horizontal bias (px/shot)" Margin="0,6,0,0" />
+                        <Slider  x:Name="RecoilHorizontal" Minimum="-10" Maximum="10" />
                         <TextBlock x:Name="RecoilVals" FontFamily="Consolas" FontSize="11" Foreground="#FF6B7585" Margin="0,4,0,0" />
-                        <TextBlock Text="Continuous counter-pull while firing. With rapid fire ON it switches to per-shot pulls synced to each click (with 70-140% volatility + spray ramp, like Logitech Lua macros)." Foreground="#FF6B7585" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap" />
+                        <TextBlock Text="One pull per shot at your weapon's fire rate (RPM below). Base 3→10px through the spray × multiplier. Still climbing = raise ×. Drifting down = lower ×." Foreground="#FF6B7585" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap" />
                     </StackPanel>
                 </Border>
                 <Border Grid.Column="2" Background="#FF111722" BorderBrush="#FF1F2937" BorderThickness="1" CornerRadius="8" Padding="14">

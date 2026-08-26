@@ -27,10 +27,15 @@ public sealed class Settings
     public Band ColorBand { get; set; } = new();
     public bool InvertFovCheck { get; set; } = false;
 
-    // No-recoil (continuous counter-pull while firing; per-shot when rapid fire is on)
+    // No-recoil — AegisMouse model: per-shot pull from a progression table,
+    // scaled by a strength MULTIPLIER, paced at the weapon's fire rate (RPM).
     public bool RecoilOn { get; set; } = true;
-    public int RecoilStrength { get; set; } = 25;  // px per second downward (per shot in combined mode)
-    public int RecoilHorizontal { get; set; } = 0; // px per second bias
+
+    /// <summary>Recoil compensation multiplier (AegisMouse-style). 1.0 = table base;
+    /// raise if the crosshair still climbs, lower if it drifts down.</summary>
+    public double RecoilStrength { get; set; } = 1.0;
+
+    public int RecoilHorizontal { get; set; } = 0; // px per shot bias
 
     // Rapid fire
     public bool RapidOn { get; set; } = true;

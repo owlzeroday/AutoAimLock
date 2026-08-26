@@ -35,11 +35,10 @@ public sealed class AimEngine : IDisposable
     bool _clickDown;
     long _nextClickAt, _clickUpAt;
 
-    // Recoil accumulators (fractional)
-    double _accX, _accY;
-
-    // Spray progression (Lua-style: pull ramps up the longer the spray continues)
+    // Spray progression (AegisMouse/Lua-style: pull ramps up over the spray)
     long _sprayStartMs; // 0 = not firing
+    int _shotIndex;     // shots fired in current spray (drives table progression)
+    long _lastShotAt;   // last recoil-only pull time
 
     public volatile bool Locked;
     public volatile bool Firing;
@@ -150,40 +149,31 @@ public sealed class AimEngine : IDisposable
                 }
 
                 // ── Spray progression (resets the moment firing stops) ──
-                if (!held) _sprayStartMs = 0;
-                else if (_sprayStartMs == 0) _sprayStartMs = now;
-                double spraySec = held ? (now - _sprayStartMs) / 1000.0 : 0;
-                double sprayMult = 1.0 + Math.Min(0.6, spraySec * 0.3); // ramps 1.0 → 1.6 over ~2s
+                if (!held) { _sprayStartMs = 0; _shotIndex = 0; }
+                else if (_sprayStartMs == 0) { _sprayStartMs = now; _shotIndex = 0; }
 
-                // ── No-recoil mode selection ──
-                // Combined (RapidOn + RecoilOn): recoil is applied PER CLICK, synced
-                // with each synthetic shot (the canonical Lua hybrid:
-                // PressAndRelease(1) → MoveRelative(0,2) → Sleep). Continuous pull
-                // only runs for plain no-recoil (auto weapons, physical hold).
-                bool combined = _settings.RapidOn && _settings.RecoilOn;
-
-                if (_settings.RecoilOn && held && !_settings.RapidOn)
+                // ── No-recoil — AegisMouse model ──
+                // Per-shot pull from a progression table × strength multiplier,
+                // paced at the weapon's fire rate (RPM). Combined with rapid fire:
+                // one pull per synthetic click. Recoil-only: one pull per fire-rate
+                // interval while the physical button is held.
+                if (_settings.RecoilOn && held)
                 {
-                    // Humanization: occasionally skip a tick (~4%)
-                    if (_rng.NextDouble() >= 0.04)
+                    int interval = Math.Clamp(60000 / Math.Max(1, _settings.RapidRpm), 20, 5000);
+                    if (!_settings.RapidOn)
                     {
-                        _accY += _settings.RecoilStrength * sprayMult * (TickMs / 1000.0);
-                        double spread = Math.Max(0.3, Math.Abs(_settings.RecoilHorizontal) * 0.4);
-                        _accX += _settings.RecoilHorizontal * (TickMs / 1000.0)
-                                 + (_rng.NextDouble() * 2 - 1) * spread * (TickMs / 1000.0);
-
-                        int mx = (int)_accX, my = (int)_accY;
-                        if (mx != 0 || my != 0)
+                        // Recoil-only (auto weapon): pull once per weapon shot.
+                        if (now - _lastShotAt >= interval * Vol(0.85, 1.15))
                         {
-                            _accX -= mx;
-                            _accY -= my;
-                            Native.Move(mx, my);
+                            PerShotPull();
+                            _lastShotAt = now;
                         }
                     }
+                    // combined mode pulls happen in the clicker below (per click)
                 }
                 else
                 {
-                    _accX = _accY = 0;
+                    _lastShotAt = 0;
                 }
 
                 // ── Rapid-fire click state machine (volatile cadence) ──
@@ -200,11 +190,10 @@ public sealed class AimEngine : IDisposable
                     {
                         Native.LeftButton(false);
                         _clickDown = false;
-                        if (combined)
+                        if (_settings.RecoilOn)
                         {
-                            // Per-shot recoil pull, synced to THIS shot (Lua hybrid),
-                            // with 70-140% volatility × spray progression.
-                            PerClickRecoil(sprayMult);
+                            // AegisMouse RapidFireRecoil: one table pull per shot.
+                            PerShotPull();
                         }
                         // Delay volatility: ±15% around the weapon interval.
                         _nextClickAt = now + (long)Math.Max(1, (interval - 10) * Vol(0.85, 1.15));
@@ -248,17 +237,19 @@ public sealed class AimEngine : IDisposable
     double Vol(double lo, double hi) => lo + _rng.NextDouble() * (hi - lo);
 
     /// <summary>
-    /// One shot = one pull. Applied immediately after the synthetic click's LEFTUP,
-    /// magnitude = RecoilStrength × volatility(0.7-1.4) × spray progression,
-    /// split into two sub-moves so it eases down instead of a single jerk.
+    /// AegisMouse-model per-shot pull: progression-table base (3px first shot →
+    /// 10px deep in the spray, like the Lua recoil_coords tables) × the strength
+    /// MULTIPLIER × 70-140% volatility, eased in two sub-moves. One call = one shot.
     /// </summary>
-    void PerClickRecoil(double sprayMult)
+    void PerShotPull()
     {
-        double totalY = _settings.RecoilStrength * Vol(0.7, 1.4) * sprayMult;
-        double totalX = _settings.RecoilHorizontal * Vol(0.7, 1.4)
+        double baseY = 3.0 + Math.Min(7.0, _shotIndex * 0.35); // 3 → 10 px
+        double totalY = baseY * _settings.RecoilStrength * Vol(0.7, 1.4);
+        double totalX = _settings.RecoilHorizontal * _settings.RecoilStrength * Vol(0.7, 1.4)
                         + (_rng.NextDouble() * 2 - 1) * Math.Max(0.2, Math.Abs(_settings.RecoilHorizontal) * 0.3);
-        if (Math.Abs(totalY) < 0.5 && Math.Abs(totalX) < 0.5) return;
+        _shotIndex++;
 
+        if (Math.Abs(totalY) < 0.5 && Math.Abs(totalX) < 0.5) return;
         // Two sub-steps (60% / 40%) — smooth ramp, no visible jerk.
         int y1 = (int)Math.Round(totalY * 0.6), y2 = (int)Math.Round(totalY * 0.4);
         int x1 = (int)Math.Round(totalX * 0.6), x2 = (int)Math.Round(totalX * 0.4);
