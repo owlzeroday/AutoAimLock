@@ -41,6 +41,12 @@ public partial class MainWindow : Window
         Deadzone.Value = _s.Deadzone; MinPixels.Value = _s.MinPixels;
         RecoilOn.IsChecked = _s.RecoilOn; RecoilStrength.Value = _s.RecoilStrength; RecoilHorizontal.Value = _s.RecoilHorizontal;
         RapidOn.IsChecked = _s.RapidOn; RapidRpm.Value = _s.RapidRpm;
+        MacroKeyCombo.Items.Add("Side Button 5");
+        MacroKeyCombo.Items.Add("Side Button 6");
+        MacroKeyCombo.Items.Add("Left Mouse");
+        int sel = _s.MacroKey switch { 0x06 => 1, 0x01 => 2, _ => 0 };
+        MacroKeyCombo.SelectedIndex = sel;
+        MacroKeyCombo.SelectionChanged += (_, _) => ApplyUiToSettings();
         foreach (var name in Settings.Presets.Keys) PresetCombo.Items.Add(name);
         PresetCombo.SelectedItem = "Knives Out — Bot Body";
         RefreshLabels();
@@ -87,6 +93,7 @@ public partial class MainWindow : Window
         _s.RecoilHorizontal = (int)RecoilHorizontal.Value;
         _s.RapidOn = RapidOn.IsChecked == true;
         _s.RapidRpm = (int)RapidRpm.Value;
+        _s.MacroKey = MacroKeyCombo.SelectedIndex switch { 1 => 0x06, 2 => 0x01, _ => 0x05 };
         _s.Save();
     }
 

@@ -23,9 +23,13 @@ public sealed class Settings
     public int MaxStep { get; set; } = 5;        // hard px/frame cap
     public int Deadzone { get; set; } = 6;       // engage threshold
     public double Hysteresis { get; set; } = 1.6;// release at Deadzone*Hysteresis
-    public int MinPixels { get; set; } = 14;
+    public int MinPixels { get; set; } = 40;     // characters only — walls/textures fail this
     public Band ColorBand { get; set; } = new();
     public bool InvertFovCheck { get; set; } = false;
+
+    // Macro trigger (AegisMouse-style): which held input drives the fire macro.
+    // 0x01 = left mouse, 0x05 = side button 5, 0x06 = side button 6.
+    public int MacroKey { get; set; } = 0x05;
 
     // No-recoil — AegisMouse model: per-shot pull from a progression table,
     // scaled by a strength MULTIPLIER, paced at the weapon's fire rate (RPM).

@@ -81,7 +81,13 @@ public static class Detector
                 int bw = maxX - minX + 1, bh = maxY - minY + 1;
                 if (bw > bh * 4 || bh > bw * 4) return false;
                 double density = cnt / ((double)bw * bh);
-                if (density < 0.10 || density > 0.92) return false;
+                if (density < 0.22 || density > 0.88) return false;
+
+                // Size cap: reject blobs that fill a large chunk of the capture —
+                // a wall face or mountain in view is a near-fullscreen solid region
+                // that must NEVER be treated as a target.
+                double areaFrac = (double)(bw * bh) / ((double)w * h);
+                if (areaFrac > 0.30) return false;
 
                 x = (double)sx / cnt;
                 y = (double)sy / cnt;

@@ -39,6 +39,7 @@ public sealed class AimEngine : IDisposable
     long _sprayStartMs; // 0 = not firing
     int _shotIndex;     // shots fired in current spray (drives table progression)
     long _lastShotAt;   // last recoil-only pull time
+    long _lockSince = long.MinValue; // when current lock began (acquisition soft-start)
 
     public volatile bool Locked;
     public volatile bool Firing;
@@ -86,29 +87,34 @@ public sealed class AimEngine : IDisposable
                 // user lets go (runaway auto-fire). So while a synthetic click is
                 // down, the reading is "unknown": the counter is frozen, and only
                 // a press detected OUTSIDE our synthetic window counts as held.
-                bool rawDown = Native.LeftDown;
-                if (_clickDown)
+                // ── Macro trigger (AegisMouse-style) ──
+                // Side button (default): hold MB5/MB6 → the tool drives firing.
+                // No feedback loop with LMB — clean edge detection.
+                // Left mouse: masked-debounce path (synthetic clicks freeze counter).
+                bool held;
+                if (_settings.MacroKey == 0x01)
                 {
-                    // synthetic in flight — leave releaseCount untouched
-                }
-                else if (rawDown)
-                {
-                    releaseCount = 0;
+                    bool rawDown = Native.LeftDown;
+                    if (_clickDown) { /* synthetic in flight — unknown, freeze */ }
+                    else if (rawDown) releaseCount = 0;
+                    else releaseCount++;
+                    held = releaseCount < 8;
                 }
                 else
                 {
-                    releaseCount++;
+                    held = Native.IsKeyDown(_settings.MacroKey);
                 }
-                bool held = releaseCount < 8; // ~64ms of continuous up = released
                 Firing = held;
 
                 int grabSize = Math.Clamp(_settings.Fov * 2, 220, 460);
                 var bmp = _grab.Grab(grabSize, out int curX, out int curY, out _, out _);
                 if (bmp == null) { SleepTick(); continue; }
 
+                bool wasLocked = Locked;
                 bool found = Detector.Find(bmp, _settings.ColorBand, curX, curY,
                     _settings.Fov, _settings.MinPixels, out double tx, out double ty, out _);
                 Locked = found;
+                if (found && !wasLocked) _lockSince = now; // new acquisition
 
                 // ── Movement: pure exponential convergence ──
                 if (found)
@@ -131,9 +137,12 @@ public sealed class AimEngine : IDisposable
                         double gain = Math.Clamp(_settings.GainPct / 100.0, 0.05, 0.60);
                         double sx = errX * gain, sy = errY * gain;
 
-                        // Hard per-tick cap (speed limiter)
+                        // Hard per-tick cap (speed limiter) + acquisition soft-start:
+                        // a NEWLY acquired lock eases in at ≤2px/tick for 150ms so
+                        // pointing near walls/scenery can never yank the view.
                         double mag = Math.Sqrt(sx * sx + sy * sy);
                         int maxStep = Math.Max(1, _settings.MaxStep);
+                        if (now - _lockSince < 150) maxStep = Math.Min(maxStep, 2);
                         if (mag > maxStep)
                         {
                             sx = sx * maxStep / mag;

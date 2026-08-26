@@ -56,4 +56,7 @@ internal static class Native
     }
 
     internal static bool LeftDown => (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
+
+    /// <summary>Generic key/button state check (VK codes incl. 0x05/0x06 side buttons).</summary>
+    internal static bool IsKeyDown(int vk) => (GetAsyncKeyState(vk) & 0x8000) != 0;
 }
