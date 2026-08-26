@@ -23,7 +23,6 @@ namespace AutoAimLock.Engine;
 public sealed class AimEngine : IDisposable
 {
     readonly Grabber _grab = new();
-    readonly Random _rng = new();
     Settings _settings = new();
     Thread? _thread;
     volatile bool _run;
@@ -31,18 +30,9 @@ public sealed class AimEngine : IDisposable
     // Hysteresis state
     bool _inDeadzone;
 
-    // Rapid-fire click state machine
-    bool _clickDown;
-    long _nextClickAt, _clickUpAt;
-
-    // Spray progression (AegisMouse/Lua-style: pull ramps up over the spray)
-    long _sprayStartMs; // 0 = not firing
-    int _shotIndex;     // shots fired in current spray (drives table progression)
-    long _lastShotAt;   // last recoil-only pull time
     long _lockSince = long.MinValue; // when current lock began (acquisition soft-start)
 
     public volatile bool Locked;
-    public volatile bool Firing;
     public int Fps { get; private set; }
 
     public event Action? Stats;
@@ -63,8 +53,6 @@ public sealed class AimEngine : IDisposable
         _run = false;
         _thread = null;
         Locked = false;
-        Firing = false;
-        ReleaseClick();
     }
 
     void Loop()
@@ -72,7 +60,6 @@ public sealed class AimEngine : IDisposable
         var sw = Stopwatch.StartNew();
         int frames = 0;
         long fpsAt = 0;
-        int releaseCount = 0;
         long now;
 
         while (_run)
@@ -81,30 +68,8 @@ public sealed class AimEngine : IDisposable
             {
                 now = sw.ElapsedMilliseconds;
 
-                // Fire button with release-debounce. CRITICAL: our own synthetic
-                // click-down ALSO sets GetAsyncKeyState — if it reset the release
-                // counter, the click train would become self-sustaining after the
-                // user lets go (runaway auto-fire). So while a synthetic click is
-                // down, the reading is "unknown": the counter is frozen, and only
-                // a press detected OUTSIDE our synthetic window counts as held.
-                // ── Macro trigger (AegisMouse-style) ──
-                // Side button (default): hold MB5/MB6 → the tool drives firing.
-                // No feedback loop with LMB — clean edge detection.
-                // Left mouse: masked-debounce path (synthetic clicks freeze counter).
-                bool held;
-                if (_settings.MacroKey == 0x01)
-                {
-                    bool rawDown = Native.LeftDown;
-                    if (_clickDown) { /* synthetic in flight — unknown, freeze */ }
-                    else if (rawDown) releaseCount = 0;
-                    else releaseCount++;
-                    held = releaseCount < 8;
-                }
-                else
-                {
-                    held = Native.IsKeyDown(_settings.MacroKey);
-                }
-                Firing = held;
+                // Pure aim-lock: no click/recoil here — those run in the
+                // AegisMouse MacroEngine (single macro driver) to avoid double input.
 
                 int grabSize = Math.Clamp(_settings.Fov * 2, 220, 460);
                 var bmp = _grab.Grab(grabSize, out int curX, out int curY, out _, out _);
@@ -157,62 +122,6 @@ public sealed class AimEngine : IDisposable
                     _inDeadzone = false;
                 }
 
-                // ── Spray progression (resets the moment firing stops) ──
-                if (!held) { _sprayStartMs = 0; _shotIndex = 0; }
-                else if (_sprayStartMs == 0) { _sprayStartMs = now; _shotIndex = 0; }
-
-                // ── No-recoil — AegisMouse model ──
-                // Per-shot pull from a progression table × strength multiplier,
-                // paced at the weapon's fire rate (RPM). Combined with rapid fire:
-                // one pull per synthetic click. Recoil-only: one pull per fire-rate
-                // interval while the physical button is held.
-                if (_settings.RecoilOn && held)
-                {
-                    int interval = Math.Clamp(60000 / Math.Max(1, _settings.RapidRpm), 20, 5000);
-                    if (!_settings.RapidOn)
-                    {
-                        // Recoil-only (auto weapon): pull once per weapon shot.
-                        if (now - _lastShotAt >= interval * Vol(0.85, 1.15))
-                        {
-                            PerShotPull();
-                            _lastShotAt = now;
-                        }
-                    }
-                    // combined mode pulls happen in the clicker below (per click)
-                }
-                else
-                {
-                    _lastShotAt = 0;
-                }
-
-                // ── Rapid-fire click state machine (volatile cadence) ──
-                if (_settings.RapidOn && held)
-                {
-                    int interval = Math.Clamp(60000 / Math.Max(1, _settings.RapidRpm), 20, 5000);
-                    if (!_clickDown && now >= _nextClickAt)
-                    {
-                        Native.LeftButton(true);
-                        _clickDown = true;
-                        _clickUpAt = now + 8 + (int)Vol(0, 6);   // hold volatility (8-14ms)
-                    }
-                    else if (_clickDown && now >= _clickUpAt)
-                    {
-                        Native.LeftButton(false);
-                        _clickDown = false;
-                        if (_settings.RecoilOn)
-                        {
-                            // AegisMouse RapidFireRecoil: one table pull per shot.
-                            PerShotPull();
-                        }
-                        // Delay volatility: ±15% around the weapon interval.
-                        _nextClickAt = now + (long)Math.Max(1, (interval - 10) * Vol(0.85, 1.15));
-                    }
-                }
-                else if (_clickDown)
-                {
-                    ReleaseClick();
-                }
-
                 // ── Stats ──
                 frames++;
                 if (now - fpsAt >= 1000)
@@ -230,40 +139,6 @@ public sealed class AimEngine : IDisposable
                 SleepTick();
             }
         }
-    }
-
-    void ReleaseClick()
-    {
-        if (_clickDown)
-        {
-            Native.LeftButton(false);
-            _clickDown = false;
-        }
-    }
-
-    /// <summary>Random multiplier in [lo, hi) — the Lua "Volatility" pattern
-    /// (70-140% on pulls, 80-120% on delays) that makes macros non-robotic.</summary>
-    double Vol(double lo, double hi) => lo + _rng.NextDouble() * (hi - lo);
-
-    /// <summary>
-    /// AegisMouse-model per-shot pull: progression-table base (3px first shot →
-    /// 10px deep in the spray, like the Lua recoil_coords tables) × the strength
-    /// MULTIPLIER × 70-140% volatility, eased in two sub-moves. One call = one shot.
-    /// </summary>
-    void PerShotPull()
-    {
-        double baseY = 3.0 + Math.Min(7.0, _shotIndex * 0.35); // 3 → 10 px
-        double totalY = baseY * _settings.RecoilStrength * Vol(0.7, 1.4);
-        double totalX = _settings.RecoilHorizontal * _settings.RecoilStrength * Vol(0.7, 1.4)
-                        + (_rng.NextDouble() * 2 - 1) * Math.Max(0.2, Math.Abs(_settings.RecoilHorizontal) * 0.3);
-        _shotIndex++;
-
-        if (Math.Abs(totalY) < 0.5 && Math.Abs(totalX) < 0.5) return;
-        // Two sub-steps (60% / 40%) — smooth ramp, no visible jerk.
-        int y1 = (int)Math.Round(totalY * 0.6), y2 = (int)Math.Round(totalY * 0.4);
-        int x1 = (int)Math.Round(totalX * 0.6), x2 = (int)Math.Round(totalX * 0.4);
-        Native.Move(x1, y1);
-        Native.Move(x2, y2);
     }
 
     static void SleepTick() => Thread.Sleep(TickMs);

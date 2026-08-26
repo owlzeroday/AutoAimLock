@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using AutoAimLock.Core;
 using AutoAimLock.Engine;
 using Wm = System.Windows.Media;
 
@@ -26,6 +27,7 @@ public partial class MainWindow : Window
             Hotkey.Register();
             Hotkey.Pressed += ToggleEnabled;
             CreateTray();
+            SyncMacroProfile();
         };
     }
 
@@ -41,12 +43,21 @@ public partial class MainWindow : Window
         Deadzone.Value = _s.Deadzone; MinPixels.Value = _s.MinPixels;
         RecoilOn.IsChecked = _s.RecoilOn; RecoilStrength.Value = _s.RecoilStrength; RecoilHorizontal.Value = _s.RecoilHorizontal;
         RapidOn.IsChecked = _s.RapidOn; RapidRpm.Value = _s.RapidRpm;
+        MacroKeyCombo.Items.Add("Left Mouse");
         MacroKeyCombo.Items.Add("Side Button 5");
         MacroKeyCombo.Items.Add("Side Button 6");
-        MacroKeyCombo.Items.Add("Left Mouse");
-        int sel = _s.MacroKey switch { 0x06 => 1, 0x01 => 2, _ => 0 };
+        // Match the combo to the profile's active binding trigger.
+        int sel = 0;
+        var trigger = App.CurrentProfile?.Bindings.FirstOrDefault()?.Trigger;
+        sel = trigger switch
+        {
+            null => 0,
+            MouseButton.Side1 => 1,
+            MouseButton.Side2 => 2,
+            _ => 0
+        };
         MacroKeyCombo.SelectedIndex = sel;
-        MacroKeyCombo.SelectionChanged += (_, _) => ApplyUiToSettings();
+        MacroKeyCombo.SelectionChanged += (_, _) => { ApplyUiToSettings(); SyncMacroProfile(); };
         foreach (var name in Settings.Presets.Keys) PresetCombo.Items.Add(name);
         PresetCombo.SelectedItem = "Knives Out — Bot Body";
         RefreshLabels();
@@ -56,7 +67,7 @@ public partial class MainWindow : Window
     void WireEvents()
     {
         foreach (var sl in new[] { HMin, HMax, SMin, SMax, VMin, VMax, Fov, Gain, MaxStep, Deadzone, MinPixels, RecoilStrength, RecoilHorizontal, RapidRpm })
-            sl.ValueChanged += (_, _) => { ApplyUiToSettings(); RefreshLabels(); };
+            sl.ValueChanged += (_, _) => { ApplyUiToSettings(); RefreshLabels(); SyncMacroProfile(); };
 
         PresetCombo.SelectionChanged += (_, _) =>
         {
@@ -71,10 +82,10 @@ public partial class MainWindow : Window
 
         EnabledCheck.Checked += (_, _) => SetEnabled(true);
         EnabledCheck.Unchecked += (_, _) => SetEnabled(false);
-        RecoilOn.Checked += (_, _) => ApplyUiToSettings();
-        RecoilOn.Unchecked += (_, _) => ApplyUiToSettings();
-        RapidOn.Checked += (_, _) => ApplyUiToSettings();
-        RapidOn.Unchecked += (_, _) => ApplyUiToSettings();
+        RecoilOn.Checked += (_, _) => { ApplyUiToSettings(); SyncMacroProfile(); };
+        RecoilOn.Unchecked += (_, _) => { ApplyUiToSettings(); SyncMacroProfile(); };
+        RapidOn.Checked += (_, _) => { ApplyUiToSettings(); SyncMacroProfile(); };
+        RapidOn.Unchecked += (_, _) => { ApplyUiToSettings(); SyncMacroProfile(); };
 
         _engine.Stats += () => Dispatcher.Invoke(UpdateStats);
     }
@@ -93,8 +104,47 @@ public partial class MainWindow : Window
         _s.RecoilHorizontal = (int)RecoilHorizontal.Value;
         _s.RapidOn = RapidOn.IsChecked == true;
         _s.RapidRpm = (int)RapidRpm.Value;
-        _s.MacroKey = MacroKeyCombo.SelectedIndex switch { 1 => 0x06, 2 => 0x01, _ => 0x05 };
         _s.Save();
+    }
+
+    /// <summary>Push the on-screen macro controls into the MacroEngine profile
+    /// (single macro driver) and persist to SQLite.</summary>
+    void SyncMacroProfile()
+    {
+        if (_loading || App.CurrentProfile is null) return;
+        var profile = App.CurrentProfile;
+        bool recoil = RecoilOn.IsChecked == true;
+        bool rapid = RapidOn.IsChecked == true;
+
+        // Trigger from combo: 0=Left, 1=Side5, 2=Side6
+        var trigger = MacroKeyCombo.SelectedIndex switch
+        {
+            1 => MouseButton.Side1,
+            2 => MouseButton.Side2,
+            _ => MouseButton.Left
+        };
+
+        // One binding handles the chosen trigger.
+        var binding = profile.Bindings.FirstOrDefault();
+        if (binding is null)
+        {
+            binding = new ButtonBinding();
+            profile.Bindings.Add(binding);
+        }
+        binding.Trigger = trigger;
+        binding.FireRateRpm = Math.Clamp((int)RapidRpm.Value, 1, 5000);
+        binding.Mode = (recoil, rapid) switch
+        {
+            (true, true) => BindingMode.RapidFireRecoil,
+            (true, false) => BindingMode.RecoilComp,
+            (false, true) => BindingMode.RapidFire,
+            (false, false) => BindingMode.Default
+        };
+        profile.RecoilStrength = Math.Round(RecoilStrength.Value, 2);
+        profile.Humanize = new HumanizeSettings { Enabled = true };
+
+        App.Macros.SetProfile(profile);
+        App.Db.SaveProfile(profile);
     }
 
     void RefreshLabels()

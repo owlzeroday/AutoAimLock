@@ -35,13 +35,14 @@ public partial class App : System.Windows.Application
 
         if (CurrentProfile is null)
         {
-            // Seed a default profile: Side1 → RapidFireRecoil with AR recoil table.
+            // Seed a default profile: Left → RapidFireRecoil with AR recoil table.
+            // Inherited LMB-hold or tap both drive the macro (single source of truth).
             CurrentProfile = new GameProfile
             {
                 Name = "Default",
                 RecoilTable = Presets.Weapons["AR (M4-style)"].Select(s => new RecoilStep { Shot = s.Shot, Dx = s.Dx, Dy = s.Dy }).ToList(),
                 RecoilStrength = 1.0,
-                Bindings = [new ButtonBinding { Trigger = MouseButton.Side1, Mode = BindingMode.RapidFireRecoil, FireRateRpm = 600 }]
+                Bindings = [new ButtonBinding { Trigger = MouseButton.Left, Mode = BindingMode.RapidFireRecoil, FireRateRpm = 600 }]
             };
             Db.SaveProfile(CurrentProfile);
         }

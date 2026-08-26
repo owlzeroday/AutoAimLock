@@ -8,9 +8,9 @@
     <UseWindowsForms>true</UseWindowsForms>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Version>1.1.0</Version>
-    <AssemblyVersion>1.1.0.0</AssemblyVersion>
-    <FileVersion>1.1.0.0</FileVersion>
+    <Version>1.1.1</Version>
+    <AssemblyVersion>1.1.1.0</AssemblyVersion>
+    <FileVersion>1.1.1.0</FileVersion>
     <Product>AutoAimLock</Product>
     <Description>AutoAimLock — stability-first auto aim lock with no-recoil. OS-level input, screen-only detection.</Description>
     <Copyright>© 2026 AutoAimLock</Copyright>
