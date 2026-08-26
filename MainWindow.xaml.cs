@@ -139,6 +139,8 @@ public partial class MainWindow : Window
     {
         ApplyUiToSettings();
         if (on) _engine.Start(_s); else _engine.Stop();
+        // AegisMouse macro subsystem: hooks stay live at all times; this gates dispatch.
+        App.Macros.SetEnabled(on);
         StateDot.Fill = new Wm.SolidColorBrush(on ? Wm.Color.FromRgb(0x22, 0xC5, 0x5E) : Wm.Color.FromRgb(0xEF, 0x44, 0x44));
         App.Overlay.SetState(on);
         _tray?.SetState(on);
