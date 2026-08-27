@@ -22,6 +22,10 @@ public partial class MainWindow : Window
         LoadUiFromSettings();
         WireEvents();
 
+        // License plan badge
+        var lic = App.CurrentLicense;
+        PlanText.Text = lic?.Plan switch { "1month" => "1 MONTH", "7days" => "7 DAYS", "3days" => "3 DAYS", _ => "TRIAL" };
+
         Loaded += (_, _) =>
         {
             Hotkey.Register();
@@ -197,6 +201,12 @@ public partial class MainWindow : Window
 
     void SetEnabled(bool on)
     {
+        if (on && (App.CurrentLicense is not { IsUsable: true }))
+        {
+            StatusText.Text = "LICENSE REQUIRED — sign in / trial to activate";
+            MessageText.Text = "Sign in to activate. Free 1-hour trial on new accounts.";
+            return;
+        }
         ApplyUiToSettings();
         if (on) _engine.Start(_s); else _engine.Stop();
         // AegisMouse macro subsystem: hooks stay live at all times; this gates dispatch.

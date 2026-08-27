@@ -1,0 +1,39 @@
+<Window x:Class="AutoAimLock.LoginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="AUTOIMLOCK — Sign In" Width="400" Height="520" ResizeMode="NoResize"
+        WindowStartupLocation="CenterScreen" Background="#FF0B0E13" Foreground="#FFE2E8F0"
+        FontFamily="Segoe UI">
+    <Grid Margin="24">
+        <StackPanel>
+            <TextBlock Text="AUTOAIMLOCK" FontSize="20" FontWeight="Bold" Foreground="#FF00E676" HorizontalAlignment="Center" />
+            <TextBlock Text="Sign in to continue" Foreground="#FF6B7585" FontSize="12" HorizontalAlignment="Center" Margin="0,2,0,20" />
+
+            <TextBlock Text="Email" Foreground="#FF6B7585" FontSize="11" />
+            <TextBox x:Name="EmailBox" Margin="0,3,0,10" Padding="8,6" Background="#FF161E2D"
+                     BorderBrush="#FF1F2937" BorderThickness="1" Foreground="#FFE2E8F0" />
+
+            <TextBlock Text="Password" Foreground="#FF6B7585" FontSize="11" />
+            <PasswordBox x:Name="PassBox" Margin="0,3,0,14" Padding="8,6" Background="#FF161E2D"
+                     BorderBrush="#FF1F2937" BorderThickness="1" Foreground="#FFE2E8F0" />
+
+            <Button x:Name="LoginBtn" Content="SIGN IN" Height="34" Margin="0,0,0,8"
+                    Background="#FF00E676" Foreground="#FF051008" FontWeight="Bold" BorderThickness="0" Cursor="Hand" />
+            <Button x:Name="SignupBtn" Content="CREATE ACCOUNT" Height="32" Margin="0,0,0,8"
+                    Background="#FF161E2D" Foreground="#FF00E676" BorderBrush="#FF1F2937" BorderThickness="1" Cursor="Hand" />
+
+            <TextBlock x:Name="Message" Foreground="#FFFB923C" FontSize="11" TextWrapping="Wrap" MinHeight="30"
+                       Margin="0,2,0,8" Text="Free 1-hour trial on every new account." />
+
+            <Border Background="#FF111722" BorderBrush="#FF1F2937" BorderThickness="1" CornerRadius="8" Padding="12">
+                <StackPanel>
+                    <TextBlock Text="PLANS" FontSize="11" FontWeight="Bold" Foreground="#FF00E676" Margin="0,0,0,6" />
+                    <TextBlock Text="1 hour — Free trial" Foreground="#FFE2E8F0" FontSize="12" />
+                    <TextBlock Text="3 days — ₱199" Foreground="#FFE2E8F0" FontSize="12" />
+                    <TextBlock Text="7 days — ₱399" Foreground="#FFE2E8F0" FontSize="12" />
+                    <TextBlock Text="1 month — ₱799" Foreground="#FFE2E8F0" FontSize="12" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </Grid>
+</Window>

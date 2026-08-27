@@ -2,6 +2,7 @@ using System.Windows;
 using AutoAimLock.Core;
 using AutoAimLock.Core.Macro;
 using AutoAimLock.Database;
+using AutoAimLock.Supabase;
 
 namespace AutoAimLock;
 
@@ -13,11 +14,20 @@ public partial class App : System.Windows.Application
     public static AppSettings AppSettings { get; private set; } = new();
     public static GameProfile? CurrentProfile { get; private set; }
     public static Tray? Tray { get; private set; }
+    /// <summary>Current license (set after successful auth). Null = not licensed.</summary>
+    public static LicenseInfo? CurrentLicense { get; private set; }
+    public static LocalSession? Session { get; private set; }
 
     public static void SetTray(Tray? tray)
     {
         Tray?.Dispose();
         Tray = tray;
+    }
+
+    public static void SetLicense(LicenseInfo? info, LocalSession? session)
+    {
+        CurrentLicense = info;
+        Session = session;
     }
 
     protected override void OnStartup(StartupEventArgs e)
@@ -36,7 +46,6 @@ public partial class App : System.Windows.Application
         if (CurrentProfile is null)
         {
             // Seed a default profile: Left → RapidFireRecoil with AR recoil table.
-            // Inherited LMB-hold or tap both drive the macro (single source of truth).
             CurrentProfile = new GameProfile
             {
                 Name = "Default",
@@ -53,9 +62,22 @@ public partial class App : System.Windows.Application
 
         Overlay = new OverlayWindow();
         Overlay.Show();
-        var win = new MainWindow();
-        MainWindow = win;
-        win.Show();
+
+        // Route: splash → cached session (login) else → main.
+        SplashWindow.ShowThen(() =>
+        {
+            var cached = LocalSession.Load();
+            if (cached is { AccessToken.Length: > 0 })
+            {
+                SetLicense(new LicenseInfo { Ok = true, Tier = cached.Tier, Plan = cached.Plan, ExpiresAt = cached.ExpiresAt }, cached);
+                var win = new MainWindow();
+                MainWindow = win;
+                return win;
+            }
+            var login = new LoginWindow();
+            MainWindow = login;
+            return login;
+        });
     }
 
     protected override void OnExit(ExitEventArgs e)

@@ -15,6 +15,9 @@
         <Grid Grid.Row="0" Margin="0,0,0,10">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="AUTOAIMLOCK" FontSize="17" FontWeight="Bold" Foreground="#FF00E676" />
+                <Border x:Name="PlanBadge" Background="#FF111722" BorderBrush="#FF00E676" BorderThickness="1" CornerRadius="4" Padding="8,2" Margin="10,0,0,0" VerticalAlignment="Center">
+                    <TextBlock x:Name="PlanText" Text="TRIAL" Foreground="#FF00E676" FontSize="9" FontWeight="Bold" />
+                </Border>
                 <TextBlock Text="  stability-first aim lock" Foreground="#FF6B7585" FontSize="11" VerticalAlignment="Center" Margin="8,2,0,0" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
@@ -149,6 +152,7 @@
         <Border Grid.Row="2" Background="#FF0D1016" BorderBrush="#FF1F2937" BorderThickness="1" CornerRadius="8" Padding="12,7" Margin="0,10,0,0">
             <StackPanel Orientation="Horizontal">
                 <TextBlock x:Name="StatusText" FontFamily="Consolas" FontSize="11.5" Foreground="#FF6B7585" Text="OFF — no target" />
+                <TextBlock x:Name="MessageText" FontFamily="Segoe UI" FontSize="11" Foreground="#FFFB923C" Text="" />
                 <TextBlock Text="   │   " Foreground="#FF2A3444" FontSize="11" />
                 <TextBlock FontFamily="Consolas" FontSize="11" Foreground="#FF6B7585">
                     <Run Text="FPS: " /><Run x:Name="FpsText" Text="0" Foreground="#FF00E676" />
